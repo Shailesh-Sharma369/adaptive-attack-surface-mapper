@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Attack Surface Mapper</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <h1 class="app-title">🛡️ Adaptive Attack Surface Mapper</h1>
+                <p class="app-subtitle">Professional Cybersecurity Assessment Tool</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Educational Disclaimer -->
+        <div class="disclaimer-banner">
+            <strong>⚠️ EDUCATIONAL USE ONLY</strong>
+            <p>This tool is intended for authorized security testing and education only. 
+               Scanning networks without explicit permission is illegal. Always obtain proper authorization before conducting security assessments.</p>
+        </div>
+
+        <!-- Scan Section -->
+        <section class="scan-section">
+            <div class="card">
+                <h2 class="section-title">Network Scanner</h2>
+                <p class="section-description">Enter an IP address to begin scanning open ports and assessing security risks.</p>
+                
+                <form id="scanForm" class="scan-form">
+                    <div class="form-group">
+                        <label for="ipInput" class="form-label">Target IP Address:</label>
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                id="ipInput" 
+                                name="ip" 
+                                class="form-input" 
+                                placeholder="192.168.1.1"
+                                pattern="^(\d{1,3}\.){3}\d{1,3}$"
+                                required
+                            >
+                            <button type="submit" id="scanBtn" class="btn btn-primary">
+                                <span id="btnText">Scan Network</span>
+                                <span id="loadingSpinner" class="spinner" style="display: none;"></span>
+                            </button>
+                        </div>
+                        <small class="form-hint">Enter a valid IPv4 address (e.g., 127.0.0.1, 192.168.1.100)</small>
+                    </div>
+
+                    <!-- Port Range Section -->
+                    <div class="port-range-section">
+                        <h4 class="port-range-title">Port Range (Optional)</h4>
+                        <div class="port-range-inputs">
+                            <div class="form-group-inline">
+                                <label for="startPortInput" class="form-label">Start Port:</label>
+                                <input 
+                                    type="number" 
+                                    id="startPortInput" 
+                                    name="start_port" 
+                                    class="form-input form-input-narrow" 
+                                    value="1"
+                                    min="1"
+                                    max="65535"
+                                    title="Port number from 1 to 65535"
+                                >
+                                <small class="form-hint">Min: 1</small>
+                            </div>
+                            <div class="port-separator">→</div>
+                            <div class="form-group-inline">
+                                <label for="endPortInput" class="form-label">End Port:</label>
+                                <input 
+                                    type="number" 
+                                    id="endPortInput" 
+                                    name="end_port" 
+                                    class="form-input form-input-narrow" 
+                                    value="1024"
+                                    min="1"
+                                    max="65535"
+                                    title="Port number from 1 to 65535"
+                                >
+                                <small class="form-hint">Max: 65535</small>
+                            </div>
+                        </div>
+                        <small class="form-hint-info">💡 Tip: Use 1-1024 for common services, or specify custom range</small>
+                    </div>
+                </form>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-state" style="display: none;">
+                    <div class="spinner-large"></div>
+                    <p id="loadingMessage">Scanning ports...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="resultsSection" class="results-section" style="display: none;">
+            <!-- Security Score Card -->
+            <div class="card score-card">
+                <h2 class="section-title">Security Assessment Summary</h2>
+                
+                <div class="score-container">
+                    <div class="score-circle">
+                        <svg viewBox="0 0 200 200" class="score-svg">
+                            <circle class="score-background" cx="100" cy="100" r="90"></circle>
+                            <circle class="score-progress" cx="100" cy="100" r="90" id="scoreCircle"></circle>
+                        </svg>
+                        <div class="score-value">
+                            <span id="scoreNumber">--</span>
+                            <span class="score-label">/100</span>
+                        </div>
+                    </div>
+
+                    <div class="score-info">
+                        <div class="rating-box">
+                            <h3 id="ratingTitle">--</h3>
+                            <p id="ratingDesc" class="rating-desc">--</p>
+                        </div>
+
+                        <div class="risk-summary">
+                            <h4>Risk Breakdown</h4>
+                            <div class="risk-items">
+                                <div class="risk-item">
+                                    <span class="risk-badge high">HIGH</span>
+                                    <span id="highCount">0</span>
+                                </div>
+                                <div class="risk-item">
+                                    <span class="risk-badge medium">MEDIUM</span>
+                                    <span id="mediumCount">0</span>
+                                </div>
+                                <div class="risk-item">
+                                    <span class="risk-badge low">LOW</span>
+                                    <span id="lowCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="priority-actions">
+                    <h4>Priority Actions</h4>
+                    <ul id="priorityList" class="action-list">
+                        <!-- Populated by JavaScript -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Target Information -->
+            <div class="card info-card">
+                <h3>Scan Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Target IP:</span>
+                        <span id="targetIP" class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Ports Scanned:</span>
+                        <span id="totalScanned" class="info-value">1,024</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Open Ports Found:</span>
+                        <span id="openCount" class="info-value">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Scan Status:</span>
+                        <span id="scanStatus" class="info-value status-success">Completed</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Open Ports Details -->
+            <div class="card ports-card">
+                <h2 class="section-title">Open Ports & Services</h2>
+                <p class="section-description">Detailed risk assessment for each discovered open port.</p>
+                
+                <div id="portsContainer" class="ports-container">
+                    <!-- Port cards populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Report Actions -->
+            <div class="card action-card">
+                <div class="action-buttons">
+                    <button id="exportReportBtn" class="btn btn-export" title="Download comprehensive security report as JSON">
+                        <span class="icon">📥</span>
+                        <span class="btn-text">Export Report</span>
+                    </button>
+                    <span class="btn-hint">Download detailed security assessment report</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- No Results State -->
+        <section id="noResultsSection" class="results-section" style="display: none;">
+            <div class="card">
+                <div class="empty-state">
+                    <h3>✓ No Open Ports Found</h3>
+                    <p>Excellent! No open ports were detected on the target. This is a good security posture.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Adaptive Attack Surface Mapper | Educational Tool</p>
+            <p class="footer-note">For authorized security testing only. Always obtain proper permissions before scanning.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        /**
+         * Adaptive Attack Surface Mapper - Frontend JavaScript
+         * Handles form submission, API communication, and results visualization
+         */
+
+        const scanForm = document.getElementById('scanForm');
+        const ipInput = document.getElementById('ipInput');
+        const scanBtn = document.getElementById('scanBtn');
+        const btnText = document.getElementById('btnText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const loadingState = document.getElementById('loadingState');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsSection = document.getElementById('resultsSection');
+        const noResultsSection = document.getElementById('noResultsSection');
+
+        /**
+         * Validate IP address format
+         */
+        function validateIP(ip) {
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRegex.test(ip)) return false;
+            
+            const parts = ip.split('.');
+            return parts.every(part => {
+                const num = parseInt(part);
+                return num >= 0 && num <= 255;
+            });
+        }
+
+        /**
+         * Show error message
+         */
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            resultsSection.style.display = 'none';
+            noResultsSection.style.display = 'none';
+        }
+
+        /**
+         * Hide error message
+         */
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        /**
+         * Display loading state
+         */
+        function showLoading() {
+            scanBtn.disabled = true;
+            btnText.style.display = 'none';
+            loadingSpinner.style.display = 'inline-block';
+            loadingState.style.display = 'block';
+            resultsSection.style.display = 'none';
+            noResultsSection.style.display = 'none';
+            hideError();
+        }
+
+        /**
+         * Hide loading state
+         */
+        function hideLoading() {
+            scanBtn.disabled = false;
+            btnText.style.display = 'inline';
+            loadingSpinner.style.display = 'none';
+            loadingState.style.display = 'none';
+        }
+
+        /**
+         * Format port card with risk information
+         */
+        function createPortCard(portData) {
+            const riskColor = portData.risk_color;
+            const riskLevel = portData.risk_level;
+            
+            return `
+                <div class="port-card risk-${riskLevel.toLowerCase()}">
+                    <div class="port-header">
+                        <div class="port-info">
+                            <h4 class="port-number">Port ${portData.port}</h4>
+                            <p class="service-name">${portData.service}</p>
+                        </div>
+                        <span class="risk-badge ${riskLevel.toLowerCase()}">${riskLevel}</span>
+                    </div>
+                    
+                    <div class="port-details">
+                        <div class="detail-section">
+                            <h5>Security Concern</h5>
+                            <p>${portData.reason}</p>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h5>Recommended Action</h5>
+                            <p class="mitigation-text">${portData.mitigation}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render results to the page
+         */
+        function renderResults(data) {
+            hideLoading();
+
+            // Store scan data for export functionality
+            currentScanData = data;
+
+            // Update target IP
+            document.getElementById('targetIP').textContent = data.ip;
+
+            // Update open ports count
+            document.getElementById('openCount').textContent = data.open_ports_count;
+
+            // Get security rating
+            const score = data.security_score;
+            updateSecurityScore(score);
+
+            // Count risks
+            const scanResults = data.scan_results;
+            const highCount = scanResults.filter(r => r.risk_level === 'HIGH').length;
+            const mediumCount = scanResults.filter(r => r.risk_level === 'MEDIUM').length;
+            const lowCount = scanResults.filter(r => r.risk_level === 'LOW').length;
+
+            document.getElementById('highCount').textContent = highCount;
+            document.getElementById('mediumCount').textContent = mediumCount;
+            document.getElementById('lowCount').textContent = lowCount;
+
+            // Generate priority actions
+            const actions = [];
+            if (highCount > 0) actions.push(`Address ${highCount} HIGH risk service(s) immediately`);
+            if (mediumCount > 0) actions.push(`Review ${mediumCount} MEDIUM risk service(s)`);
+            if (highCount === 0 && mediumCount === 0) actions.push('Maintain current security posture');
+            
+            const priorityList = document.getElementById('priorityList');
+            priorityList.innerHTML = actions.map(action => `<li>${action}</li>`).join('');
+
+            // Render ports
+            if (scanResults.length > 0) {
+                const portsContainer = document.getElementById('portsContainer');
+                portsContainer.innerHTML = scanResults.map(createPortCard).join('');
+                resultsSection.style.display = 'block';
+                noResultsSection.style.display = 'none';
+            } else {
+                resultsSection.style.display = 'none';
+                noResultsSection.style.display = 'block';
+            }
+        }
+
+        /**
+         * Update security score visualization
+         */
+        function updateSecurityScore(score) {
+            const scoreNumber = document.getElementById('scoreNumber');
+            const scoreCircle = document.getElementById('scoreCircle');
+            const ratingTitle = document.getElementById('ratingTitle');
+            const ratingDesc = document.getElementById('ratingDesc');
+
+            scoreNumber.textContent = score;
+
+            // Calculate circle circumference
+            const circumference = 2 * Math.PI * 90;
+            const strokeDashoffset = circumference - (score / 100) * circumference;
+            scoreCircle.style.strokeDashoffset = strokeDashoffset;
+
+            // Determine rating
+            let rating = '';
+            let ratingColor = '';
+            if (score >= 90) {
+                rating = 'EXCELLENT';
+                ratingColor = '#28a745';
+            } else if (score >= 70) {
+                rating = 'GOOD';
+                ratingColor = '#20c997';
+            } else if (score >= 50) {
+                rating = 'FAIR';
+                ratingColor = '#ffc107';
+            } else if (score >= 30) {
+                rating = 'POOR';
+                ratingColor = '#fd7e14';
+            } else {
+                rating = 'CRITICAL';
+                ratingColor = '#dc3545';
+            }
+
+            ratingTitle.textContent = rating;
+            ratingTitle.style.color = ratingColor;
+
+            // Update rating description
+            const descriptions = {
+                'EXCELLENT': 'Very secure configuration with minimal attack surface',
+                'GOOD': 'Secure with minor improvements needed',
+                'FAIR': 'Moderate security concerns require attention',
+                'POOR': 'Significant security vulnerabilities present',
+                'CRITICAL': 'Severe security issues requiring immediate action'
+            };
+
+            ratingDesc.textContent = descriptions[rating];
+            ratingDesc.style.color = ratingColor;
+
+            // Update circle color
+            scoreCircle.style.stroke = ratingColor;
+        }
+
+        /**
+         * Validate port range
+         */
+        function validatePortRange(startPort, endPort) {
+            const errors = [];
+            
+            if (isNaN(startPort) || isNaN(endPort)) {
+                errors.push('Port values must be numbers');
+            } else {
+                startPort = parseInt(startPort);
+                endPort = parseInt(endPort);
+                
+                if (startPort < 1) {
+                    errors.push('Start port must be >= 1');
+                }
+                if (endPort > 65535) {
+                    errors.push('End port must be <= 65535');
+                }
+                if (startPort >= endPort) {
+                    errors.push(`Start port (${startPort}) must be less than end port (${endPort})`);
+                }
+            }
+            
+            return { valid: errors.length === 0, errors };
+        }
+
+        /**
+         * Handle form submission
+         */
+        scanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const ip = ipInput.value.trim();
+            const startPort = parseInt(document.getElementById('startPortInput').value);
+            const endPort = parseInt(document.getElementById('endPortInput').value);
+
+            // Validate IP
+            if (!validateIP(ip)) {
+                showError('Invalid IP address. Please enter a valid IPv4 address (e.g., 192.168.1.1)');
+                return;
+            }
+
+            // Validate port range
+            const portValidation = validatePortRange(startPort, endPort);
+            if (!portValidation.valid) {
+                showError(portValidation.errors.join('. '));
+                return;
+            }
+
+            // Show loading state and update message
+            showLoading();
+            document.getElementById('loadingMessage').textContent = `Scanning ports ${startPort}-${endPort}...`;
+
+            try {
+                // Send scan request with port range
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        ip: ip,
+                        start_port: startPort,
+                        end_port: endPort
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderResults(data);
+                } else {
+                    showError(data.error || 'Scan failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error. Please check your connection and try again.');
+            }
+        });
+
+        // Auto-focus input on page load
+        window.addEventListener('load', () => {
+            ipInput.focus();
+        });
+
+        /**
+         * Store current scan data for report export
+         */
+        let currentScanData = null;
+
+        /**
+         * Export scan results as JSON report
+         */
+        async function exportReport() {
+            if (!currentScanData) {
+                showError('No scan data available to export');
+                return;
+            }
+
+            const exportBtn = document.getElementById('exportReportBtn');
+            const btnText = exportBtn.querySelector('.btn-text');
+            const originalText = btnText.textContent;
+
+            try {
+                // Show loading state
+                exportBtn.disabled = true;
+                btnText.textContent = 'Generating...';
+
+                // Send scan data to export endpoint
+                const response = await fetch('/export-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentScanData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Export failed');
+                }
+
+                // Get the file blob
+                const blob = await response.blob();
+
+                // Create download link
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+
+                // Extract filename from Content-Disposition header if available
+                const contentDisposition = response.headers.get('content-disposition');
+                let filename = 'security_report.json';
+                
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                link.download = filename;
+
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Clean up
+                window.URL.revokeObjectURL(downloadUrl);
+
+                // Show success message
+                btnText.textContent = 'Downloaded ✓';
+                setTimeout(() => {
+                    btnText.textContent = originalText;
+                    exportBtn.disabled = false;
+                }, 2000);
+
+                console.log(`Report exported successfully: ${filename}`);
+
+            } catch (error) {
+                console.error('Export error:', error);
+                showError(`Report export failed: ${error.message}`);
+                btnText.textContent = originalText;
+                exportBtn.disabled = false;
+            }
+        }
+
+        // Export report button click handler
+        document.getElementById('exportReportBtn').addEventListener('click', exportReport);
+
+        // Auto-focus input on page load
+        window.addEventListener('load', () => {
+            ipInput.focus();
+        });
+    </script>
+</body>
+</html>
